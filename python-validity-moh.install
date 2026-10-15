@@ -1,0 +1,31 @@
+post_install() {
+  udevadm control --reload-rules >/dev/null 2>&1 || true
+  udevadm trigger --subsystem-match=usb >/dev/null 2>&1 || true
+  systemctl daemon-reload >/dev/null 2>&1 || true
+  cat <<'MSG'
+
+==> python-validity-moh installed.
+    1. The stock fprintd must not be installed (it conflicts with open-fprintd/fprintd-clients).
+    2. systemctl enable --now open-fprintd python3-validity
+    3. Sensor 06cb:00a2 that is NOT initialised for this PC (for example it was paired with Windows):
+         validity-sensors-firmware            (downloads the firmware extension to /var/run/python-validity)
+         sudo python3 /usr/share/python-validity/playground/factory-reset.py
+       then run  sudo python3 /usr/share/python-validity/playground/enroll_moh_chip.py --list-users
+       repeating it until it finishes
+       (each step reboots the sensor; "Resource busy" right after a reboot is harmless, wait and retry).
+       WARNING: the reset erases the sensor's flash, including pairing and fingers stored by Windows.
+    4. Enrol a finger:  fprintd-enroll   (or enroll_moh_chip.py --user-sid ... --frames 6 --match)
+    5. Check:           fprintd-verify
+
+MSG
+}
+
+post_upgrade() {
+  udevadm control --reload-rules >/dev/null 2>&1 || true
+  systemctl daemon-reload >/dev/null 2>&1 || true
+  systemctl try-restart python3-validity.service >/dev/null 2>&1 || true
+}
+
+pre_remove() {
+  systemctl disable --now python3-validity.service >/dev/null 2>&1 || true
+}
